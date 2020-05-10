@@ -46,17 +46,19 @@ object PieceParser extends Parsers {
   case class Sequence(head: MoveAST, tail: Sequence) extends MoveAST
 
 
-  def modifiedJump: Parser[ModifiedJump] = {
+  def modifiedJump: Parser[MoveAST] = {
 
 
-    val normal = atomicJump ~ rep1(modifier) ^^ { case atom ~ mods => mods.foldLeft(ModifiedJump(atom, None())) { (z, i) => ModifiedJump(z, i) } }
-    val brackets = OPENPAREN ~ choice ~ CLOSEPAREN ^^ { case _ ~ j ~ _ => ModifiedJump(j, None()) }
-    val base = atomicJump ^^ { case atom => ModifiedJump(atom, None()) }
-    brackets | normal | base
+    val normal = baseJump ~ rep1(modifier) ^^ { case atom ~ mods => mods.foldLeft(ModifiedJump(atom, None())) { (z, i) => ModifiedJump(z, i) } }
+
+    val base = baseJump ^^ { case atom => atom }
+    normal | base
   }
 
-  def atomicJump: Parser[AtomicJump] = {
-    (OPENJUMP ~ number ~ COMMA ~ number ~ CLOSEJUMP) ^^ { case _ ~ NUMBER(x) ~ _ ~ NUMBER(y) ~ _ => AtomicJump(x, y) }
+  def baseJump: Parser[MoveAST] = {
+    val brackets = OPENPAREN ~ choice ~ CLOSEPAREN ^^ { case _ ~ j ~ _ => j }
+    val atom = OPENJUMP ~ number ~ COMMA ~ number ~ CLOSEJUMP ^^ { case _ ~ NUMBER(x) ~ _ ~ NUMBER(y) ~ _ => AtomicJump(x, y) }
+    brackets | atom
   }
 
 
@@ -71,28 +73,37 @@ object PieceParser extends Parsers {
   }
 
   def repeat: Parser[Repeat] = {
-    val inf = (OPENREPITITION ~ RANGE ~ CLOSEREPITITION) ^^ { case _ ~ _ ~ _ => Repeat(0, Int.MaxValue) }
-    val lower = (OPENREPITITION ~ number ~ RANGE ~ CLOSEREPITITION) ^^ { case _ ~ NUMBER(l) ~ _ ~ _ => Repeat(l, Int.MaxValue) }
-    val upper = (OPENREPITITION ~ RANGE ~ number ~ CLOSEREPITITION) ^^ { case _ ~ _ ~ NUMBER(u) ~ _ => Repeat(0, u) }
-    val both = (OPENREPITITION ~ number ~ RANGE ~ number ~ CLOSEREPITITION) ^^ { case _ ~ NUMBER(l) ~ _ ~ NUMBER(u) ~ _ => Repeat(l, u) }
-    lower | upper | inf | both
+    val inf = OPENREPITITION ~ RANGE ~ CLOSEREPITITION ^^ { case _ ~ _ ~ _ => Repeat(1, Int.MaxValue) }
+    val lower = OPENREPITITION ~ number ~ RANGE ~ CLOSEREPITITION ^^ { case _ ~ NUMBER(l) ~ _ ~ _ => Repeat(l, Int.MaxValue) }
+    val upper = OPENREPITITION ~ RANGE ~ number ~ CLOSEREPITITION ^^ { case _ ~ _ ~ NUMBER(u) ~ _ => Repeat(1, u) }
+    val both = OPENREPITITION ~ number ~ RANGE ~ number ~ CLOSEREPITITION ^^ { case _ ~ NUMBER(l) ~ _ ~ NUMBER(u) ~ _ => Repeat(l, u) }
+    val single = OPENREPITITION ~ number ~ CLOSEREPITITION ^^ { case _ ~ NUMBER(n) ~ _ => Repeat(n, n) }
+    lower | upper | inf | both | single
   }
 
   def exponentiate: Parser[Exponentiate] = {
-    val inf = (OPENEXPONENT ~ RANGE ~ CLOSEEXPONENT) ^^ { case _ ~ _ ~ _ => Exponentiate(0, Int.MaxValue) }
-    val lower = (OPENEXPONENT ~ number ~ RANGE ~ CLOSEEXPONENT) ^^ { case _ ~ NUMBER(l) ~ _ ~ _ => Exponentiate(l, Int.MaxValue) }
-    val upper = (OPENEXPONENT ~ RANGE ~ number ~ CLOSEEXPONENT) ^^ { case _ ~ _ ~ NUMBER(u) ~ _ => Exponentiate(0, u) }
-    val both = (OPENEXPONENT ~ number ~ RANGE ~ number ~ CLOSEEXPONENT) ^^ { case _ ~ NUMBER(l) ~ _ ~ NUMBER(u) ~ _ => Exponentiate(l, u) }
-    lower | upper | inf | both
+    val inf = OPENEXPONENT ~ RANGE ~ CLOSEEXPONENT ^^ { case _ ~ _ ~ _ => Exponentiate(1, Int.MaxValue) }
+    val lower = OPENEXPONENT ~ number ~ RANGE ~ CLOSEEXPONENT ^^ { case _ ~ NUMBER(l) ~ _ ~ _ => Exponentiate(l, Int.MaxValue) }
+    val upper = OPENEXPONENT ~ RANGE ~ number ~ CLOSEEXPONENT ^^ { case _ ~ _ ~ NUMBER(u) ~ _ => Exponentiate(1, u) }
+    val both = OPENEXPONENT ~ number ~ RANGE ~ number ~ CLOSEEXPONENT ^^ { case _ ~ NUMBER(l) ~ _ ~ NUMBER(u) ~ _ => Exponentiate(l, u) }
+    val single = OPENEXPONENT ~ number ~ CLOSEEXPONENT ^^ { case _ ~ NUMBER(n) ~ _ => Exponentiate(n, n) }
+    lower | upper | inf | both | single
   }
 
-  def choice: Parser[Choice] = {
-    sequence ~ rep(COMMA ~ sequence) ^^ { case first ~ subsequent => Choice(first :: (subsequent.map(_._2))) }
+  def choice: Parser[MoveAST] = {
+    val single = sequence ^^ { case s => s }
+    val multi = sequence ~ rep1(COMMA ~ sequence) ^^ { case first ~ subsequent => Choice(first :: (subsequent.map(_._2))) }
+    multi | single
   }
 
-  def sequence: Parser[Sequence] = {
-    modifiedJump ~ rep(DOT ~ sequence) ^^ { case first ~ rest => Sequence(first, rest.map(_._2).foldRight(Sequence(null,null)){(z,i)=>{Sequence(i,z)}}) }
-
+  def sequence: Parser[MoveAST] = {
+    val single = modifiedJump ^^ { case m => m }
+    val multi = modifiedJump ~ rep1(DOT ~ modifiedJump) ^^ { case first ~ rest => Sequence(first, rest.map(_._2).foldRight(Sequence(null, null)) { (i, a) => {
+      Sequence(i, a)
+    }
+    })
+    }
+    multi | single
   }
 
 
