@@ -1,10 +1,10 @@
-import PieceParser.MoveAST
+import PieceParser.ChoiceOfSequence
 
-object PieceCompiler {
-  def apply(code: String): Either[FairychessCompilationError, MoveAST] = {
-    for {
+object PieceCompiler{
+  def apply(code:String):Either[FairychessCompilationError,ChoiceOfSequence]={
+    for{
       tokens <- Lexer(code)
-      ast <- PieceParser(tokens)
-    } yield ast
+      moveset <-PieceParser(tokens)
+    }yield moveset
   }
 }
