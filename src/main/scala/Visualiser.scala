@@ -7,7 +7,7 @@ import doodle.java2d._
 
 object Visualiser {
 
-  val scale =50
+  val scale = 50
   val thickness = 5
 
   val hyp = Math.sqrt(Math.pow(scale,2)*2)
@@ -36,7 +36,7 @@ object Visualiser {
 
     val paths: Image = DrawPaths(moves, -centerX, -centerY, x - centerX - 1, y - centerY - 1)
     //offset moves then impose on board
-    val imposed: Image = board.under(paths.at((centerX - x / 2.0) * scale, (centerY - y / 2.0) * scale))
+    val imposed: Image = board.under(paths.at((centerX - x / 2.0+0.5) * scale, (centerY - y / 2.0+0.5) * scale))
 
     imposed.draw()
 
