@@ -46,19 +46,19 @@ object PieceParser extends Parsers {
 
   case class MirrorX() extends Modifier {
     override def modify(move: ChoiceOfSequence) = {
-      move.map(_.map((i: AtomicJump) => AtomicJump(-i.x, i.y)))++move
+      move.map(_.map((i: AtomicJump) => AtomicJump(-i.x, i.y))) ++ move
     }
   }
 
   case class MirrorY() extends Modifier {
     override def modify(move: ChoiceOfSequence) = {
-      move.map(_.map((i: AtomicJump) => AtomicJump(i.x, -i.y)))++move
+      move.map(_.map((i: AtomicJump) => AtomicJump(i.x, -i.y))) ++ move
     }
   }
 
   case class Flip() extends Modifier {
     override def modify(move: ChoiceOfSequence) = {
-      move.map(_.map((i: AtomicJump) => AtomicJump(-i.y, i.x)))++move
+      move.map(_.map((i: AtomicJump) => AtomicJump(-i.y, i.x))) ++ move
     }
   }
 
@@ -68,13 +68,13 @@ object PieceParser extends Parsers {
     }
 
     def rep(move: ChoiceOfSequence, r: Int) = {
-      var ret:ChoiceOfSequence = Set[MoveSequence]()
+      var ret: ChoiceOfSequence = Set[MoveSequence]()
       for (i: MoveSequence <- move) {
         var cur: MoveSequence = IndexedSeq[AtomicJump]()
         for (j <- 1 to r) {
           cur ++= i
         }
-        ret+=cur
+        ret += cur
       }
       ret
     }
@@ -86,7 +86,9 @@ object PieceParser extends Parsers {
     }
 
     def multiply(moves: PieceParser.ChoiceOfSequence, i: Int): ChoiceOfSequence = {
-      if (i == 1) {moves}
+      if (i == 1) {
+        moves
+      }
       else {
         val tail = multiply(moves, i - 1)
         //moves.map((h:MoveSequence) => tail.map((t:MoveSequence)=>h++t)).fold(Set()){(z,i)=>z++i}//.flatten
@@ -111,12 +113,17 @@ object PieceParser extends Parsers {
 
   case class Sequence(head: MoveAST, tail: MoveAST) extends MoveAST {
     override def simplify(): ChoiceOfSequence = {
-      val sHead: ChoiceOfSequence = head.simplify()
-      val sTail: ChoiceOfSequence = tail.simplify()
+      if (tail == Sequence(null,null)) {
+        head.simplify()
+      } else {
+        val sHead: ChoiceOfSequence = head.simplify()
 
-      sHead.flatMap((h: MoveSequence) => {
-        sTail.map((t: MoveSequence) => h ++ t)
-      })
+        val sTail: ChoiceOfSequence = tail.simplify()
+
+        sHead.flatMap((h: MoveSequence) => {
+          sTail.map((t: MoveSequence) => h ++ t)
+        })
+      }
 
     }
   }
