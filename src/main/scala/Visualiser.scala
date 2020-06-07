@@ -20,7 +20,12 @@ object Visualiser {
   val interSquare: Image = Image.circle(1).strokeColor(Color.lightBlue).strokeWidth(thickness / scale).at(-0.5, -0.5)
 
   def Show(piece: String, x: Int, y: Int): Unit = {
-    PieceCompiler(piece).toOption.map(_ => DrawMoves(_, x, y))
+    val COSForm = PieceCompiler(piece)
+    COSForm match {
+      case Left(e:FairychessParserError)=> println("Error:"+e)
+      case Right(c:ChoiceOfSequence)  => DrawMoves(c, x, y)
+    }
+
 
   }
 
